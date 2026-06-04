@@ -68,23 +68,32 @@ public class MainActivity extends AppCompatActivity {
         batteryReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-                int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
                 boolean charging = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
                         == BatteryManager.BATTERY_STATUS_CHARGING
                         || intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
                         == BatteryManager.BATTERY_STATUS_FULL;
 
-                if (level >= 0 && scale > 0) {
-                    // Use BatteryManager for more precise reading
-                    BatteryManager bm = (BatteryManager) getSystemService(BATTERY_SERVICE);
-                    int intProperty = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
-                    // Combine both for 2 decimal places approximation
-                    float precise = (level * 100.0f / scale);
-                    String pct = String.format("%.2f%%", precise);
-                    String state = charging ? "⚡ Charging" : "🔋 Discharging";
-                    tvBattery.setText(pct + "\n" + state);
+                float precise = -1f;
+                BatteryManager bm = (BatteryManager) getSystemService(BATTERY_SERVICE);
+                if (bm != null) {
+                    float counterUah = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER);
+                    double fullMah = getBatteryCapacity(context);
+                    if (counterUah > 0 && fullMah > 0) {
+                        float counterMah = counterUah / 1000f;
+                        precise = (float) ((counterMah / fullMah) * 100f);
+                    }
                 }
+                
+                if (precise < 0f || precise > 100.5f) {
+                    int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                    int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+                    precise = (level >= 0 && scale > 0) ? (level * 100.0f / scale) : 0f;
+                }
+                precise = Math.min(precise, 100f);
+
+                String pct = String.format("%.2f%%", precise);
+                String state = charging ? "⚡ Charging" : "🔋 Discharging";
+                tvBattery.setText(pct + "\n" + state);
             }
         };
 
@@ -94,6 +103,19 @@ public class MainActivity extends AppCompatActivity {
             startForegroundService(serviceIntent);
         } else {
             startService(serviceIntent);
+        }
+    }
+
+    private double getBatteryCapacity(Context context) {
+        try {
+            Object mPowerProfile = Class.forName("com.android.internal.os.PowerProfile")
+                    .getConstructor(Context.class)
+                    .newInstance(context);
+            return (double) Class.forName("com.android.internal.os.PowerProfile")
+                    .getMethod("getBatteryCapacity")
+                    .invoke(mPowerProfile);
+        } catch (Exception e) {
+            return 0;
         }
     }
 

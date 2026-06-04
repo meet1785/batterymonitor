@@ -1,0 +1,29 @@
+R_DEF: Internal format may change without notice
+local
+color accent_green
+color accent_green_dark
+color button_dark
+color card_bg
+color card_border
+color glow_green
+color glow_soft
+color screen_bg_bottom
+color screen_bg_top
+color text_primary
+color text_secondary
+drawable bg_button_primary
+drawable bg_button_secondary
+drawable bg_card
+drawable bg_chip
+drawable bg_chip_dot
+drawable bg_glow
+drawable bg_glow_soft
+drawable bg_screen
+drawable ic_battery
+id btnStart
+id btnStop
+id tvBattery
+layout activity_main
+mipmap ic_launcher
+string app_name
+style AppTheme

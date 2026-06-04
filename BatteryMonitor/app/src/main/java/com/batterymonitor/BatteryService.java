@@ -20,7 +20,7 @@ public class BatteryService extends Service {
 
     private static final String CHANNEL_ID = "battery_monitor_channel";
     private static final int NOTIF_ID = 101;
-    private static final long UPDATE_INTERVAL_MS = 30_000; // 30 seconds
+    private static final long UPDATE_INTERVAL_MS = 5_000; // 5 seconds for precise decimal tracking
 
     private Handler handler;
     private Runnable updateRunnable;
@@ -56,21 +56,54 @@ public class BatteryService extends Service {
         return START_STICKY; // Restart if killed
     }
 
+    private float getPreciseBatteryLevel(Intent batteryStatus) {
+        float precise = -1f;
+        BatteryManager bm = (BatteryManager) getSystemService(BATTERY_SERVICE);
+        if (bm != null) {
+            float counterUah = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER);
+            double fullMah = getBatteryCapacity(this);
+            if (counterUah > 0 && fullMah > 0) {
+                float counterMah = counterUah / 1000f;
+                precise = (float) ((counterMah / fullMah) * 100f);
+            }
+        }
+        if (precise > 0f && precise <= 100.5f) {
+            return Math.min(precise, 100f);
+        }
+        if (batteryStatus != null) {
+            int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+            int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+            if (level >= 0 && scale > 0) {
+                return (level * 100.0f / scale);
+            }
+        }
+        return 0f;
+    }
+
+    private double getBatteryCapacity(Context context) {
+        try {
+            Object mPowerProfile = Class.forName("com.android.internal.os.PowerProfile")
+                    .getConstructor(Context.class)
+                    .newInstance(context);
+            return (double) Class.forName("com.android.internal.os.PowerProfile")
+                    .getMethod("getBatteryCapacity")
+                    .invoke(mPowerProfile);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
     private final BroadcastReceiver batteryReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (Intent.ACTION_BATTERY_CHANGED.equals(intent.getAction())) {
-                int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-                int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
                 int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
                 boolean charging = (status == BatteryManager.BATTERY_STATUS_CHARGING
                         || status == BatteryManager.BATTERY_STATUS_FULL);
 
-                if (level >= 0 && scale > 0) {
-                    float precise = (level * 100.0f / scale);
-                    String pct = String.format("%.2f%%", precise);
-                    notifManager.notify(NOTIF_ID, buildNotification(pct, charging, precise));
-                }
+                float precise = getPreciseBatteryLevel(intent);
+                String pct = String.format("%.2f%%", precise);
+                notifManager.notify(NOTIF_ID, buildNotification(pct, charging, precise));
             }
         }
     };
@@ -80,17 +113,13 @@ public class BatteryService extends Service {
                 new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
         if (batteryStatus == null) return;
 
-        int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-        int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
         int status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
         boolean charging = (status == BatteryManager.BATTERY_STATUS_CHARGING
                 || status == BatteryManager.BATTERY_STATUS_FULL);
 
-        if (level >= 0 && scale > 0) {
-            float precise = (level * 100.0f / scale);
-            String pct = String.format("%.2f%%", precise);
-            notifManager.notify(NOTIF_ID, buildNotification(pct, charging, precise));
-        }
+        float precise = getPreciseBatteryLevel(batteryStatus);
+        String pct = String.format("%.2f%%", precise);
+        notifManager.notify(NOTIF_ID, buildNotification(pct, charging, precise));
     }
 
     private Notification buildNotification(String pctText, boolean charging, float pct) {

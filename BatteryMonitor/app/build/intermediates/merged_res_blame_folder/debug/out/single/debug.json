@@ -1,0 +1,46 @@
+[
+    {
+        "merged": "com.batterymonitor.app-merged_res-20:/drawable_bg_button_primary.xml.flat",
+        "source": "com.batterymonitor.app-main-22:/drawable/bg_button_primary.xml"
+    },
+    {
+        "merged": "com.batterymonitor.app-merged_res-20:/drawable_bg_button_secondary.xml.flat",
+        "source": "com.batterymonitor.app-main-22:/drawable/bg_button_secondary.xml"
+    },
+    {
+        "merged": "com.batterymonitor.app-merged_res-20:/drawable_bg_glow_soft.xml.flat",
+        "source": "com.batterymonitor.app-main-22:/drawable/bg_glow_soft.xml"
+    },
+    {
+        "merged": "com.batterymonitor.app-merged_res-20:/drawable_bg_card.xml.flat",
+        "source": "com.batterymonitor.app-main-22:/drawable/bg_card.xml"
+    },
+    {
+        "merged": "com.batterymonitor.app-merged_res-20:/drawable_bg_glow.xml.flat",
+        "source": "com.batterymonitor.app-main-22:/drawable/bg_glow.xml"
+    },
+    {
+        "merged": "com.batterymonitor.app-merged_res-20:/drawable_ic_battery.xml.flat",
+        "source": "com.batterymonitor.app-main-22:/drawable/ic_battery.xml"
+    },
+    {
+        "merged": "com.batterymonitor.app-merged_res-20:/layout_activity_main.xml.flat",
+        "source": "com.batterymonitor.app-main-22:/layout/activity_main.xml"
+    },
+    {
+        "merged": "com.batterymonitor.app-merged_res-20:/drawable_bg_screen.xml.flat",
+        "source": "com.batterymonitor.app-main-22:/drawable/bg_screen.xml"
+    },
+    {
+        "merged": "com.batterymonitor.app-merged_res-20:/drawable_bg_chip.xml.flat",
+        "source": "com.batterymonitor.app-main-22:/drawable/bg_chip.xml"
+    },
+    {
+        "merged": "com.batterymonitor.app-merged_res-20:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "com.batterymonitor.app-main-22:/mipmap-hdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.batterymonitor.app-merged_res-20:/drawable_bg_chip_dot.xml.flat",
+        "source": "com.batterymonitor.app-main-22:/drawable/bg_chip_dot.xml"
+    }
+]
