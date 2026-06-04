@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import android.content.BroadcastReceiver;
@@ -18,6 +19,13 @@ import androidx.core.content.ContextCompat;
 public class MainActivity extends AppCompatActivity {
 
     private TextView tvBattery;
+    private ProgressBar pbBattery;
+    private TextView tvStatus;
+    private TextView tvTime;
+    private TextView tvCurrent;
+    private TextView tvHealth;
+    private TextView tvVoltage;
+    private TextView tvTemp;
     private BroadcastReceiver batteryReceiver;
 
     @Override
@@ -26,6 +34,14 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         tvBattery = findViewById(R.id.tvBattery);
+        pbBattery = findViewById(R.id.pbBattery);
+        tvStatus = findViewById(R.id.tvStatus);
+        tvTime = findViewById(R.id.tvTime);
+        tvCurrent = findViewById(R.id.tvCurrent);
+        tvHealth = findViewById(R.id.tvHealth);
+        tvVoltage = findViewById(R.id.tvVoltage);
+        tvTemp = findViewById(R.id.tvTemp);
+        
         Button btnStart = findViewById(R.id.btnStart);
         Button btnStop = findViewById(R.id.btnStop);
 
@@ -42,9 +58,11 @@ public class MainActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             android.os.PowerManager pm = (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
             if (pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName())) {
-                Intent optIntent = new Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
-                optIntent.setData(android.net.Uri.parse("package:" + getPackageName()));
-                startActivity(optIntent);
+                try {
+                    Intent optIntent = new Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                    optIntent.setData(android.net.Uri.parse("package:" + getPackageName()));
+                    startActivity(optIntent);
+                } catch (Exception ignored) {}
             }
         }
 
@@ -68,32 +86,7 @@ public class MainActivity extends AppCompatActivity {
         batteryReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                boolean charging = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
-                        == BatteryManager.BATTERY_STATUS_CHARGING
-                        || intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
-                        == BatteryManager.BATTERY_STATUS_FULL;
-
-                float precise = -1f;
-                BatteryManager bm = (BatteryManager) getSystemService(BATTERY_SERVICE);
-                if (bm != null) {
-                    float counterUah = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER);
-                    double fullMah = getBatteryCapacity(context);
-                    if (counterUah > 0 && fullMah > 0) {
-                        float counterMah = counterUah / 1000f;
-                        precise = (float) ((counterMah / fullMah) * 100f);
-                    }
-                }
-                
-                if (precise < 0f || precise > 100.5f) {
-                    int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-                    int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-                    precise = (level >= 0 && scale > 0) ? (level * 100.0f / scale) : 0f;
-                }
-                precise = Math.min(precise, 100f);
-
-                String pct = String.format("%.2f%%", precise);
-                String state = charging ? "⚡ Charging" : "🔋 Discharging";
-                tvBattery.setText(pct + "\n" + state);
+                updateUI(intent);
             }
         };
 
@@ -106,23 +99,38 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private double getBatteryCapacity(Context context) {
-        try {
-            Object mPowerProfile = Class.forName("com.android.internal.os.PowerProfile")
-                    .getConstructor(Context.class)
-                    .newInstance(context);
-            return (double) Class.forName("com.android.internal.os.PowerProfile")
-                    .getMethod("getBatteryCapacity")
-                    .invoke(mPowerProfile);
-        } catch (Exception e) {
-            return 0;
+    private void updateUI(Intent intent) {
+        float precise = BatteryUtils.getPreciseBatteryLevel(this, intent);
+        String pct = String.format("%.2f%%", precise);
+        tvBattery.setText(pct);
+        pbBattery.setProgress((int) (precise * 100));
+
+        tvStatus.setText(BatteryUtils.getBatteryStatusText(intent));
+        tvTime.setText(BatteryUtils.getRemainingTime(this, intent, precise));
+        
+        int currentMa = BatteryUtils.getBatteryCurrentNow(this);
+        tvCurrent.setText(currentMa + "mA");
+        // Color current green if charging, white if discharging
+        int status = intent != null ? intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1) : -1;
+        if (status == BatteryManager.BATTERY_STATUS_CHARGING) {
+            tvCurrent.setTextColor(0xFF78F8B3);
+        } else {
+            tvCurrent.setTextColor(0xFFF3F7FA);
         }
+
+        tvHealth.setText(BatteryUtils.getBatteryHealthText(intent));
+        tvVoltage.setText(String.format("%.2fV", BatteryUtils.getBatteryVoltage(intent)));
+        tvTemp.setText(String.format("%.1f°C", BatteryUtils.getBatteryTemperature(intent)));
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        registerReceiver(batteryReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+        Intent initial = registerReceiver(batteryReceiver, filter);
+        if (initial != null) {
+            updateUI(initial);
+        }
     }
 
     @Override
